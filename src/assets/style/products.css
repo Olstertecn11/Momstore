@@ -1,0 +1,54 @@
+.products-page {
+  background: #f8faf5;
+  min-height: calc(100vh - 70px);
+  padding-top: 100px; /* espacio por el navbar fijo */
+  padding-bottom: 60px;
+}
+
+/* Ajustes finos sobre lo que Chakra ya hace */
+.products-filters select,
+.products-filters input {
+  font-size: 0.85rem;
+}
+
+.products-grid {
+  margin-top: 10px;
+}
+
+.product-card {
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.product-card .product-category {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.product-card .product-price,
+.product-modal .product-price {
+  color: #1b2b1f;
+}
+
+/* Estado vacío */
+.products-empty {
+  padding: 40px 20px;
+  text-align: center;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px dashed rgba(136, 173, 64, 0.35);
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* Modal */
+.product-modal {
+  border-radius: 20px !important;
+}
+
+/* Responsive pequeños ajustes extra */
+@media (max-width: 600px) {
+  .products-page {
+    padding-top: 90px;
+    padding-bottom: 40px;
+  }
+}
