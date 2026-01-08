@@ -1,7 +1,8 @@
 import React from "react";
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 
-function Layout({ children, navbarInsideChild = false }) {
+function Layout({ children, navbarInsideChild = false, navbarDarkmode = false }) {
   if (navbarInsideChild) {
     return (
       <>
@@ -10,14 +11,16 @@ function Layout({ children, navbarInsideChild = false }) {
             navbar: <Navbar />
           })
         }
+        <Footer />
       </>
     );
   }
 
   return (
     <>
-      <Navbar />
+      <Navbar darkmode={navbarDarkmode} />
       <main>{children}</main>
+      <Footer />
     </>
   );
 }

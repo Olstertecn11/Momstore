@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Container,
@@ -10,7 +10,7 @@ import {
   InputLeftElement,
   Select,
   Stack,
-  Tag,
+  Badge,
   Button,
   HStack,
   VStack,
@@ -21,118 +21,112 @@ import {
   ModalHeader,
   ModalBody,
   ModalCloseButton,
-  Badge,
   Divider,
+  Image,
+  Skeleton,
+  SkeletonText,
 } from "@chakra-ui/react";
 import { SearchIcon } from "@chakra-ui/icons";
 import "../assets/style/products.css";
 
-const ALL_PRODUCTS = [
-  {
-    id: 1,
-    name: "Canasta de frutas frescas",
-    description: "Selección de frutas de temporada para desayunos y snacks saludables.",
-    price: 45,
-    unit: "Q",
-    category: "Frutas y verduras",
-    tag: "Saludable",
-  },
-  {
-    id: 2,
-    name: "Pack semanal de verduras",
-    description: "Verduras frescas listas para cocinar durante toda la semana.",
-    price: 60,
-    unit: "Q",
-    category: "Frutas y verduras",
-    tag: "Para la semana",
-  },
-  {
-    id: 3,
-    name: "Kit básico de despensa",
-    description: "Pasta, granos, salsas y otros esenciales para tu alacena.",
-    price: 120,
-    unit: "Q",
-    category: "Despensa",
-    tag: "Esenciales",
-  },
-  {
-    id: 4,
-    name: "Snacks horneados",
-    description: "Snacks ligeros para el día a día, ideales para la oficina o el estudio.",
-    price: 35,
-    unit: "Q",
-    category: "Snacks",
-    tag: "Ligero",
-  },
-  {
-    id: 5,
-    name: "Combo desayuno saludable",
-    description: "Avena, miel, fruta deshidratada y leche para empezar bien tu día.",
-    price: 85,
-    unit: "Q",
-    category: "Desayuno",
-    tag: "Saludable",
-  },
-  {
-    id: 6,
-    name: "Pack de limpieza para cocina",
-    description: "Detergente, esponjas y limpiadores para mantener tu cocina impecable.",
-    price: 75,
-    unit: "Q",
-    category: "Hogar y limpieza",
-    tag: "Hogar",
-  },
-  {
-    id: 7,
-    name: "Bebidas sin azúcar surtidas",
-    description: "Variedad de bebidas sin azúcar añadida para cuidar tu consumo diario.",
-    price: 55,
-    unit: "Q",
-    category: "Bebidas",
-    tag: "Sin azúcar",
-  },
-  {
-    id: 8,
-    name: "Pastas integrales surtidas",
-    description: "Diferentes tipos de pasta integral para tus recetas favoritas.",
-    price: 50,
-    unit: "Q",
-    category: "Despensa",
-    tag: "Integral",
-  },
-];
+import environment from "../config/environment";
 
-const getCategories = () => {
-  const set = new Set(ALL_PRODUCTS.map((p) => p.category));
-  return ["Todas las categorías", ...Array.from(set)];
+const normalizeProduct = (p) => {
+  const priceNumber =
+    typeof p.price === "number" ? p.price : Number(String(p.price).replace(",", "."));
+
+  return {
+    id: p.id_product,
+    name: p.name ?? "",
+    description: p.description ?? "",
+    price: Number.isFinite(priceNumber) ? priceNumber : 0,
+    unit: "Q",
+    categoryId: p.id_category_fk,
+    imageUrl: p.image_url || "",
+    stock: typeof p.stock === "number" ? p.stock : Number(p.stock || 0),
+  };
 };
 
 export default function Products() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("Todas las categorías");
+  const [category, setCategory] = useState("all"); // "all" o id numérico en string
   const [sort, setSort] = useState("recomendados");
+
   const [selectedProduct, setSelectedProduct] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const categories = useMemo(() => getCategories(), []);
+  // =========================
+  // Fetch productos
+  // =========================
+  useEffect(() => {
+    const controller = new AbortController();
 
+    async function load() {
+      try {
+        setLoading(true);
+        setErrorMsg("");
+
+        const url = `${environment.config.apiUrl}/products`;
+        const res = await fetch(url, { signal: controller.signal });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} al cargar productos`);
+        }
+
+        const data = await res.json();
+        const normalized = Array.isArray(data) ? data.map(normalizeProduct) : [];
+        setProducts(normalized);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          setErrorMsg(err.message || "Error cargando productos");
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+    return () => controller.abort();
+  }, []);
+
+  // =========================
+  // Categorías desde productos
+  // (Si prefieres, luego lo cambiamos a /categories para mostrar nombres reales)
+  // =========================
+  const categories = useMemo(() => {
+    // "Categoria 1", "Categoria 2"... basado en categoryId
+    const ids = Array.from(new Set(products.map((p) => p.categoryId))).sort((a, b) => a - b);
+
+    return [
+      { value: "all", label: "Todas las categorías" },
+      ...ids.map((id) => ({ value: String(id), label: `Categoría ${id}` })),
+    ];
+  }, [products]);
+
+  // =========================
+  // Filtrado + Orden
+  // =========================
   const filteredProducts = useMemo(() => {
-    let result = [...ALL_PRODUCTS];
+    let result = [...products];
 
-    // filtro por búsqueda
-    if (search.trim()) {
-      const term = search.toLowerCase();
+    // búsqueda
+    const term = search.trim().toLowerCase();
+    if (term) {
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(term) ||
-          p.description.toLowerCase().includes(term) ||
-          p.category.toLowerCase().includes(term)
+          p.description.toLowerCase().includes(term)
       );
     }
 
-    // filtro por categoría
-    if (category !== "Todas las categorías") {
-      result = result.filter((p) => p.category === category);
+    // categoría
+    if (category !== "all") {
+      const catId = Number(category);
+      result = result.filter((p) => p.categoryId === catId);
     }
 
     // ordenamiento
@@ -140,10 +134,10 @@ export default function Products() {
       result.sort((a, b) => a.price - b.price);
     } else if (sort === "precio_desc") {
       result.sort((a, b) => b.price - a.price);
-    } // "recomendados" deja el orden base
+    }
 
     return result;
-  }, [search, category, sort]);
+  }, [products, search, category, sort]);
 
   const handleOpenProduct = (product) => {
     setSelectedProduct(product);
@@ -164,11 +158,22 @@ export default function Products() {
             Nuestro catálogo
           </Heading>
           <Text fontSize="sm" color="#555" maxW="540px">
-            Encuentra productos para tu hogar y cocina con un enfoque en lo
-            práctico, saludable y delicioso. Filtra por categoría o busca por
+            Encuentra productos para tu hogar y cocina. Filtra por categoría o busca por
             nombre para encontrar lo que necesitas.
           </Text>
         </Stack>
+
+        {/* Estado: error */}
+        {errorMsg ? (
+          <Box mb={6} p={4} bg="red.50" border="1px solid" borderColor="red.200" borderRadius="lg">
+            <Text fontSize="sm" color="red.700">
+              {errorMsg}
+            </Text>
+            <Text fontSize="xs" color="red.600" mt={1}>
+              Verifica que tu API esté corriendo en {environment.config.apiUrl}
+            </Text>
+          </Box>
+        ) : null}
 
         {/* Filtros */}
         <Stack
@@ -198,8 +203,8 @@ export default function Products() {
             fontSize="sm"
           >
             {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+              <option key={cat.value} value={cat.value}>
+                {cat.label}
               </option>
             ))}
           </Select>
@@ -217,12 +222,20 @@ export default function Products() {
           </Select>
         </Stack>
 
-        {/* Grid de productos */}
-        {filteredProducts.length === 0 ? (
+        {/* Loading skeleton */}
+        {loading ? (
+          <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={5}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Box key={i} bg="white" borderRadius="xl" boxShadow="sm" p={4}>
+                <Skeleton height="140px" borderRadius="lg" />
+                <SkeletonText mt="4" noOfLines={3} spacing="3" />
+              </Box>
+            ))}
+          </SimpleGrid>
+        ) : filteredProducts.length === 0 ? (
           <Box className="products-empty">
             <Text fontSize="sm" color="#555">
-              No encontramos productos que coincidan con tu búsqueda. Prueba con
-              otro término o categoría.
+              No encontramos productos que coincidan con tu búsqueda.
             </Text>
           </Box>
         ) : (
@@ -241,29 +254,39 @@ export default function Products() {
                 p={4}
                 cursor="pointer"
                 onClick={() => handleOpenProduct(product)}
-                _hover={{
-                  transform: "translateY(-4px)",
-                  boxShadow: "lg",
-                }}
+                _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
                 transition="all 0.2s ease"
               >
-                <VStack align="flex-start" spacing={2}>
+                <VStack align="flex-start" spacing={3}>
+                  {/* Imagen */}
+                  <Box w="100%" borderRadius="lg" overflow="hidden" bg="gray.50">
+                    <Image
+                      src={product.imageUrl}
+                      alt={product.name}
+                      w="100%"
+                      h="140px"
+                      objectFit="cover"
+                      fallback={<Box h="140px" />}
+                    />
+                  </Box>
+
                   <HStack justify="space-between" w="100%">
                     <Badge
-                      colorScheme="green"
+                      colorScheme={product.stock > 0 ? "green" : "red"}
                       variant="subtle"
                       borderRadius="full"
                       px={2}
                       fontSize="0.7rem"
                     >
-                      {product.tag}
+                      {product.stock > 0 ? "Disponible" : "Agotado"}
                     </Badge>
-                    <Text className="product-category" fontSize="xs" color="gray.500">
-                      {product.category}
+
+                    <Text fontSize="xs" color="gray.500">
+                      Cat. {product.categoryId}
                     </Text>
                   </HStack>
 
-                  <Heading as="h3" size="sm" color="#1b2b1f">
+                  <Heading as="h3" size="sm" color="#1b2b1f" noOfLines={2}>
                     {product.name}
                   </Heading>
 
@@ -271,8 +294,8 @@ export default function Products() {
                     {product.description}
                   </Text>
 
-                  <HStack justify="space-between" w="100%" pt={2}>
-                    <Text className="product-price" fontWeight="bold" fontSize="sm">
+                  <HStack justify="space-between" w="100%" pt={1}>
+                    <Text fontWeight="bold" fontSize="sm">
                       {product.unit}
                       {product.price.toFixed(2)}
                     </Text>
@@ -296,29 +319,39 @@ export default function Products() {
           </SimpleGrid>
         )}
 
-        {/* Modal de producto */}
+        {/* Modal */}
         <Modal isOpen={isOpen} onClose={handleCloseModal} isCentered size="md">
           <ModalOverlay />
           <ModalContent className="product-modal">
-            <ModalHeader>
-              {selectedProduct ? selectedProduct.name : "Producto"}
-            </ModalHeader>
+            <ModalHeader>{selectedProduct ? selectedProduct.name : "Producto"}</ModalHeader>
             <ModalCloseButton />
             <ModalBody pb={6}>
               {selectedProduct && (
                 <Stack spacing={4}>
+                  <Box w="100%" borderRadius="lg" overflow="hidden" bg="gray.50">
+                    <Image
+                      src={selectedProduct.imageUrl}
+                      alt={selectedProduct.name}
+                      w="100%"
+                      h="180px"
+                      objectFit="cover"
+                      fallback={<Box h="180px" />}
+                    />
+                  </Box>
+
                   <HStack spacing={3}>
                     <Badge
-                      colorScheme="green"
+                      colorScheme={selectedProduct.stock > 0 ? "green" : "red"}
                       variant="subtle"
                       borderRadius="full"
                       px={2}
                       fontSize="0.7rem"
                     >
-                      {selectedProduct.tag}
+                      {selectedProduct.stock > 0 ? "Disponible" : "Agotado"}
                     </Badge>
+
                     <Text fontSize="xs" color="gray.500">
-                      {selectedProduct.category}
+                      Categoría {selectedProduct.categoryId}
                     </Text>
                   </HStack>
 
@@ -330,18 +363,13 @@ export default function Products() {
 
                   <HStack justify="space-between">
                     <Text fontSize="sm" color="gray.600">
-                      Precio aproximado:
+                      Precio:
                     </Text>
-                    <Text className="product-price" fontWeight="bold">
+                    <Text fontWeight="bold">
                       {selectedProduct.unit}
                       {selectedProduct.price.toFixed(2)}
                     </Text>
                   </HStack>
-
-                  <Text fontSize="xs" color="gray.500">
-                    *Precios sujetos a cambios según disponibilidad y lote. El
-                    total final se confirma al procesar tu pedido.
-                  </Text>
 
                   <Button
                     mt={2}
@@ -350,16 +378,12 @@ export default function Products() {
                     color="white"
                     _hover={{ bg: "#667e37" }}
                     w="full"
+                    isDisabled={selectedProduct.stock <= 0}
                   >
                     Agregar a mi lista
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    borderRadius="full"
-                    size="sm"
-                    w="full"
-                  >
+                  <Button variant="outline" borderRadius="full" size="sm" w="full">
                     Consultar por WhatsApp
                   </Button>
                 </Stack>
