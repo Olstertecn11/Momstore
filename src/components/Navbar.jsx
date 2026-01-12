@@ -276,7 +276,11 @@ export default function Navbar({ darkmode = false }) {
         <DrawerContent bg={'#4f5c3dc9'} backdropFilter={'blur(10px)'}>
           <DrawerHeader display="flex" alignItems="center" justifyContent="space-between">
             <Text>Tu carrito</Text>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/carrito")}>
+            <Button variant="ghost" size="sm" onClick={() => {
+              navigate("/carrito")
+              cartDrawer.onClose()
+            }
+            }>
               Ver detalle
             </Button>
           </DrawerHeader>
