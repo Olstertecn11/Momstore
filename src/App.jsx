@@ -4,6 +4,7 @@ import Products from "./pages/Products";
 import Contact from "./pages/Contact"; // crea este archivo
 import Layout from "./components/Layout";
 import "./assets/style/main.css";
+import { CartProvider } from "./store/cart.context";
 
 function RouterManager() {
   return (
@@ -39,5 +40,9 @@ function RouterManager() {
 }
 
 export default function App() {
-  return <RouterManager />;
+  return (
+    <CartProvider>
+      <RouterManager />
+    </CartProvider>
+  );
 }

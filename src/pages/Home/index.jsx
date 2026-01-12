@@ -16,23 +16,14 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import hero_bg from "../assets/images/home_background.jpg";
-import environment from "../config/environment";
+import hero_bg from "../../assets/images/home_background.jpg";
+import environment from "../../config/environment";
+import { useCart } from "../../store/cart.context";
+import ProductCard from "../../components/common/ProductCard";
+import FeatureCard from './FeatureCard'
 
-const normalizeProduct = (p) => {
-  const price =
-    typeof p.price === "number" ? p.price : Number(String(p.price).replace(",", "."));
+import { normalizeProduct } from './utils'
 
-  return {
-    id: p.id_product,
-    name: p.name ?? "",
-    description: p.description ?? "",
-    price: Number.isFinite(price) ? price : 0,
-    imageUrl: p.image_url || "",
-    stock: typeof p.stock === "number" ? p.stock : Number(p.stock || 0),
-    categoryId: p.id_category_fk,
-  };
-};
 
 export default function Home({ navbar }) {
   const navigate = useNavigate();
@@ -42,6 +33,9 @@ export default function Home({ navbar }) {
   const [errorFeatured, setErrorFeatured] = useState("");
 
   const heroMinH = useBreakpointValue({ base: "560px", md: "640px" });
+
+
+  const { addItem } = useCart();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -94,6 +88,8 @@ export default function Home({ navbar }) {
     if (!featured.length) return "Aún no hay productos para mostrar.";
     return "Explora algunas de las opciones que tenemos para ti.";
   }, [loadingFeatured, errorFeatured, featured.length]);
+
+
 
   return (
     <Box bg="gray.50">
@@ -277,7 +273,7 @@ export default function Home({ navbar }) {
         ) : (
           <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={5}>
             {featured.map((p) => (
-              <ProductCard key={p.id} product={p} onOpenCatalog={handleGoCatalog} />
+              <ProductCard key={p.id} product={p} onOpenCatalog={handleGoCatalog} addProduct={addItem} />
             ))}
           </SimpleGrid>
         )}
@@ -286,88 +282,4 @@ export default function Home({ navbar }) {
   );
 }
 
-function FeatureCard({ icon, title, desc }) {
-  return (
-    <Box bg="white" borderRadius="2xl" boxShadow="sm" p={6}>
-      <Box fontSize="28px" mb={3}>
-        {icon}
-      </Box>
-      <Heading size="sm" color="#1b2b1f" mb={2}>
-        {title}
-      </Heading>
-      <Text fontSize="sm" color="gray.600">
-        {desc}
-      </Text>
-    </Box>
-  );
-}
 
-function ProductCard({ product, onOpenCatalog }) {
-  const available = product.stock > 0;
-
-  return (
-    <Box
-      bg="white"
-      borderRadius="2xl"
-      boxShadow="sm"
-      p={4}
-      cursor="pointer"
-      onClick={onOpenCatalog}
-      _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
-      transition="all 0.2s ease"
-    >
-      <Box position="relative" borderRadius="xl" overflow="hidden" bg="gray.50">
-        <Image
-          src={product.imageUrl}
-          alt={product.name}
-          w="100%"
-          h="150px"
-          objectFit="cover"
-          fallback={<Box h="150px" />}
-        />
-        <Badge
-          position="absolute"
-          top="10px"
-          left="10px"
-          borderRadius="full"
-          px={3}
-          py={1}
-          bg="blackAlpha.600"
-          color="white"
-          backdropFilter="blur(10px)"
-          fontSize="xs"
-        >
-          {available ? "Disponible" : "Agotado"}
-        </Badge>
-      </Box>
-
-      <Heading size="sm" color="#1b2b1f" mt={3} noOfLines={2}>
-        {product.name}
-      </Heading>
-      <Text fontSize="xs" color="gray.600" mt={1} noOfLines={2}>
-        {product.description}
-      </Text>
-
-      <HStack justify="space-between" mt={3}>
-        <Text fontWeight="bold" color="#1b2b1f">
-          Q{product.price.toFixed(2)}
-        </Text>
-
-        <Button
-          size="sm"
-          borderRadius="full"
-          bg="#88ad40"
-          color="white"
-          _hover={{ bg: "#667e37" }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenCatalog();
-          }}
-          isDisabled={!available}
-        >
-          {available ? "Agregar" : "Ver"}
-        </Button>
-      </HStack>
-    </Box>
-  );
-}
