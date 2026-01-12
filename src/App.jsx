@@ -6,6 +6,7 @@ import Layout from "./components/Layout";
 import "./assets/style/main.css";
 import { CartProvider } from "./store/cart.context";
 import Cart from "./pages/Cart";
+import Order from "./pages/Order";
 
 function RouterManager() {
   return (
@@ -32,6 +33,14 @@ function RouterManager() {
           element={
             <Layout navbarDarkmode>
               <Cart />
+            </Layout>
+          }
+        />
+        <Route
+          path="/pedido/:code"
+          element={
+            <Layout navbarDarkmode>
+              <Order />
             </Layout>
           }
         />

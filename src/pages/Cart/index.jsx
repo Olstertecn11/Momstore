@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Flex,
@@ -16,6 +16,9 @@ import {
 import { FiTrash2, FiArrowLeft } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../store/cart.context";
+import axios from "axios";
+import environment from '../../config/environment'
+import { useToast } from "@chakra-ui/react";
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -23,6 +26,102 @@ export default function Cart() {
 
   const subtotal = Number(totals?.subtotal || 0);
   const itemsCount = Number(totals?.itemsCount || 0);
+  const toast = useToast();
+  const [sending, setSending] = React.useState(false);
+
+
+  const sendOrder = async () => {
+    if (!items?.length) return;
+
+    // 1) Normaliza items del carrito a lo que espera tu API
+    //    Ajusta aquí según cómo venga tu item (id_product vs id)
+    const orderItems = items.map((it) => {
+      const productId = it.id_product ?? it.id; // 👈 clave
+      const qty = Number(it.qty || 0);
+
+      return {
+        product_id: Number(productId),
+        quantity: qty,
+      };
+    }).filter(i => Number.isFinite(i.product_id) && i.product_id > 0 && i.quantity > 0);
+
+    if (!orderItems.length) {
+      toast({
+        title: "Carrito inválido",
+        description: "No se encontraron productos válidos para enviar.",
+        status: "error",
+        duration: 2500,
+        isClosable: true,
+      });
+      return;
+    }
+
+    // 2) Customer (ideal: lo pides en un form/modal)
+    //    Por ahora: placeholders seguros
+    const customer = {
+      name: "Cliente",          // TODO: pedirlo al usuario
+      email: "olivertzunun.mingob@gmail.com",                // opcional
+      phone: "59621085",        // TODO
+      address: "11 av 17-25 zona 2",              // opcional
+    };
+
+    // 3) Payload final
+    const orderPayload = {
+      customer,
+      items: orderItems,
+    };
+
+    try {
+      setSending(true);
+
+      const url = `${environment.config.apiUrl}/orders`;
+      const { data } = await axios.post(url, orderPayload, {
+        headers: { "Content-Type": "application/json" },
+        timeout: 15000,
+      });
+
+      // Esperamos algo como: { code: "ABC123", id_order: 10 } o similar
+      const code = data?.code || data?.order?.code;
+      const orderId = data?.id_order || data?.order?.id_order || data?.orderId;
+
+      toast({
+        title: "Pedido creado",
+        description: code ? `Código: ${code}` : "Tu pedido fue registrado correctamente.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      clear();
+
+      // Si tienes una página de estado del pedido:
+      // Ej: /pedido/:code o /orders/:id
+      if (code) {
+        navigate(`/pedido/${code}`);
+      } else if (orderId) {
+        navigate(`/orders/${orderId}`);
+      } else {
+        // fallback: vuelve a productos
+        navigate("/Productos");
+      }
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "No se pudo procesar el pedido.";
+
+      toast({
+        title: "Error al enviar pedido",
+        description: msg,
+        status: "error",
+        duration: 3500,
+        isClosable: true,
+      });
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <Box bg="#F3F7FB" minH="100vh" pt={{ base: 24, md: 28 }} pb={14}>
@@ -64,7 +163,7 @@ export default function Cart() {
                 <Text color="gray.600" textAlign="center" maxW="420px">
                   Explora nuestros productos y agrega tus favoritos para continuar.
                 </Text>
-                <Button bg="#00AEEF" color="white" _hover={{ bg: "#008fca" }} onClick={() => navigate("/Productos")}>
+                <Button bg="green.700" color="white" _hover={{ bg: "#008fca" }} onClick={() => navigate("/Productos")}>
                   Ir a productos
                 </Button>
               </VStack>
@@ -205,6 +304,7 @@ export default function Cart() {
               _hover={{ bg: "green.900" }}
               py={6}
               borderRadius="xl"
+              onClick={sendOrder}
               isDisabled={items.length === 0}
             >
               Finalizar compra
