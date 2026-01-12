@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   Box,
   Container,
@@ -25,9 +25,15 @@ import {
   Progress,
 } from "@chakra-ui/react";
 import { SearchIcon } from "@chakra-ui/icons";
-import { FaWhatsapp, FaMapMarkerAlt, FaClock, FaBoxOpen, FaReceipt } from "react-icons/fa";
+import {
+  FaWhatsapp,
+  FaMapMarkerAlt,
+  FaClock,
+  FaBoxOpen,
+  FaReceipt,
+} from "react-icons/fa";
 import axios from "axios";
-import environment from "../../config/environment"; // ajusta si tu path cambia
+import environment from "../../config/environment";
 import { useParams } from "react-router-dom";
 
 // ---- helpers: status mapping ----
@@ -44,10 +50,10 @@ const STATUS = {
 function normalizeOrder(raw) {
   if (!raw) return null;
 
-  // intenta distintas formas comunes
   const code = raw.code || raw.order_code || raw.codigo || raw?.order?.code;
   const status = raw.status || raw.estado || raw?.order?.status || "RECEIVED";
-  const entryDate = raw.entry_date || raw.entryDate || raw.created_at || raw?.order?.entry_date;
+  const entryDate =
+    raw.entry_date || raw.entryDate || raw.created_at || raw?.order?.entry_date;
 
   const customer =
     raw.customer ||
@@ -68,10 +74,14 @@ function normalizeOrder(raw) {
     raw?.order?.items ||
     [];
 
-  // items: intenta mapear para UI
   const normalizedItems = (Array.isArray(items) ? items : []).map((it) => ({
     id: it.id || it.id_order_detail || it.id_product_fk || it.product_id,
-    name: it.name || it.product_name || it.product?.name || it.product?.nombre || "Producto",
+    name:
+      it.name ||
+      it.product_name ||
+      it.product?.name ||
+      it.product?.nombre ||
+      "Producto",
     qty: Number(it.quantity ?? it.count ?? it.qty ?? 1),
     price: Number(it.price ?? it.unit_price ?? it.product?.price ?? 0),
     imageUrl: it.image_url || it.imageUrl || it.product?.image_url || "",
@@ -99,103 +109,127 @@ function moneyQ(n) {
 
 export default function Order() {
   const toast = useToast();
-  const params = useParams();
-  const ORDER_CODE = params.code || "";
+  const { code: routeCode } = useParams();
+  const ORDER_CODE = (routeCode || "").trim();
 
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(ORDER_CODE);
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState(null);
 
-  const statusMeta = useMemo(() => {
-    const key = order?.status || "RECEIVED";
-    return STATUS[key] || { label: key, color: "black", step: 15 };
-  }, [order?.status]);
+  // WhatsApp
+  const whatsappLink = useMemo(() => {
+    const WHATSAPP_NUMBER = "50200000000"; // pon el real
+    const currentCode = order?.code || code?.trim();
+    if (!currentCode) return `https://wa.me/${WHATSAPP_NUMBER}`;
 
+    const text = encodeURIComponent(
+      `Hola MomStore 👋\nQuisiera información sobre mi pedido.\nCódigo: ${currentCode}\nGracias.`
+    );
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
+  }, [order?.code, code]);
+
+  // Totales
   const totals = useMemo(() => {
     const items = order?.items || [];
-    const subtotal = items.reduce((acc, it) => acc + (it.price || 0) * (it.qty || 0), 0);
+    const subtotal = items.reduce(
+      (acc, it) => acc + (it.price || 0) * (it.qty || 0),
+      0
+    );
     const count = items.reduce((acc, it) => acc + (it.qty || 0), 0);
     return { subtotal, count };
   }, [order]);
 
-  const whatsappLink = useMemo(() => {
-    // cambia tu número real
-    const WHATSAPP_NUMBER = "50200000000";
-    if (!order?.code) return `https://wa.me/${WHATSAPP_NUMBER}`;
+  // Meta estado
+  const statusMeta = useMemo(() => {
+    const key = order?.status || "RECEIVED";
+    return STATUS[key] || { label: key, color: "gray", step: 15 };
+  }, [order?.status]);
 
-    const text = encodeURIComponent(
-      `Hola MomStore 👋\nQuisiera información sobre mi pedido.\nCódigo: ${order.code}\nGracias.`
-    );
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
-  }, [order?.code]);
-
-  const fetchOrderByCode = async (orderCode) => {
-    // ✅ Ajusta si tu API usa otro endpoint
-    // Ej: GET /api/orders/code/:code
-    const url = `${environment.config.apiUrl}/orders/${encodeURIComponent(orderCode)}`;
+  const fetchOrderByCode = useCallback(async (orderCode) => {
+    const url = `${environment.config.apiUrl}/orders/${encodeURIComponent(
+      orderCode
+    )}`;
     const { data } = await axios.get(url);
     return data;
-  };
+  }, []);
 
-  const handleSearch = async () => {
-    const c = code.trim();
-    console.log("Buscando pedido con código:", c);
-    if (c.length < 3) {
-      toast({
-        title: "Código inválido",
-        description: "Escribe un código de pedido válido.",
-        status: "warning",
-        duration: 2500,
-        isClosable: true,
-      });
-      return;
-    }
+  // ✅ Búsqueda robusta: permite buscar por parámetro (ruta) o por input
+  const handleSearch = useCallback(
+    async (codeOverride) => {
+      const c = String(codeOverride ?? code).trim();
 
-    try {
-      setLoading(true);
-      setOrder(null);
-
-      const raw = await fetchOrderByCode(c);
-      const normalized = normalizeOrder(raw);
-
-      if (!normalized?.code) {
+      if (c.length < 3) {
         toast({
-          title: "No encontrado",
-          description: "No encontramos un pedido con ese código.",
-          status: "info",
-          duration: 2600,
+          title: "Código inválido",
+          description: "Escribe un código de pedido válido.",
+          status: "warning",
+          duration: 2200,
           isClosable: true,
         });
         return;
       }
 
-      setOrder(normalized);
-    } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "No se pudo cargar el pedido.";
+      try {
+        setLoading(true);
+        setOrder(null);
 
-      toast({
-        title: "Error",
-        description: msg,
-        status: "error",
-        duration: 3200,
-        isClosable: true,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+        const raw = await fetchOrderByCode(c);
+        const normalized = normalizeOrder(raw);
 
+        if (!normalized?.code) {
+          toast({
+            title: "No encontrado",
+            description: "No encontramos un pedido con ese código.",
+            status: "info",
+            duration: 2400,
+            isClosable: true,
+          });
+          return;
+        }
 
-  React.useEffect(() => {
-    if (ORDER_CODE) {
-      setCode(ORDER_CODE);
-      setTimeout(() => handleSearch(), 200);
-    }
-  }, []);
+        setOrder(normalized);
+      } catch (err) {
+        const status = err?.response?.status;
+
+        // si tu backend devuelve 404, queda bonito así
+        if (status === 404) {
+          toast({
+            title: "Pedido no encontrado",
+            description: "Verifica el código e inténtalo de nuevo.",
+            status: "info",
+            duration: 2600,
+            isClosable: true,
+          });
+          return;
+        }
+
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "No se pudo cargar el pedido.";
+
+        toast({
+          title: "Error",
+          description: msg,
+          status: "error",
+          duration: 3200,
+          isClosable: true,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [code, fetchOrderByCode, toast]
+  );
+
+  // ✅ Auto-búsqueda al entrar con /pedido/:code y cuando el :code cambie
+  useEffect(() => {
+    if (!ORDER_CODE) return;
+
+    setCode(ORDER_CODE);
+    handleSearch(ORDER_CODE);
+  }, [ORDER_CODE, handleSearch]);
 
   return (
     <Box bg="gray.50" minH="100vh" pt={{ base: 20, md: 24 }} pb={{ base: 14, md: 18 }}>
@@ -240,7 +274,14 @@ export default function Order() {
         </Stack>
 
         {/* Search bar */}
-        <Card borderRadius="2xl" boxShadow="sm" border="1px solid" borderColor="green.200" mb={8} bg={"green.50"}>
+        <Card
+          borderRadius="2xl"
+          boxShadow="sm"
+          border="1px solid"
+          borderColor="green.200"
+          mb={8}
+          bg="green.50"
+        >
           <CardBody>
             <Stack spacing={4}>
               <HStack spacing={3} flexWrap="wrap">
@@ -262,11 +303,12 @@ export default function Order() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSearch();
                     }}
+                    isDisabled={loading}
                   />
                 </InputGroup>
 
                 <Button
-                  onClick={handleSearch}
+                  onClick={() => handleSearch()}
                   bg="#88ad40"
                   color="white"
                   borderRadius="full"
@@ -287,7 +329,8 @@ export default function Order() {
                   variant="outline"
                   borderRadius="full"
                   color="#25D366"
-                  bg={'white'}
+                  bg="white"
+                  borderColor="blackAlpha.200"
                   _hover={{ bg: "blackAlpha.50" }}
                 >
                   Ayuda por WhatsApp
@@ -322,24 +365,30 @@ export default function Order() {
         {/* Order content */}
         {!loading && order ? (
           <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-            {/* LEFT: Status + Customer */}
-            <Card borderRadius="2xl" boxShadow="sm" border="1px solid" borderColor="blackAlpha.100" bg='#D9E3D9'>
+            {/* LEFT */}
+            <Card
+              borderRadius="2xl"
+              boxShadow="sm"
+              border="1px solid"
+              borderColor="blackAlpha.200"
+              bg="white"
+            >
               <CardHeader pb={0}>
                 <HStack justify="space-between" align="flex-start" flexWrap="wrap" gap={3}>
                   <Box>
                     <HStack spacing={2}>
                       <Icon as={FaReceipt} color="#636E52" />
-                      <Heading size="md" color='black'>
+                      <Heading size="md" color="#0F172A">
                         Pedido {order.code}
                       </Heading>
                     </HStack>
-                    <Text color="gray.500" fontSize="sm" mt={1}>
+                    <Text color="gray.600" fontSize="sm" mt={1}>
                       {order.entryDate ? `Fecha: ${order.entryDate}` : "Fecha: —"}
                     </Text>
                   </Box>
 
                   <Tag size="lg" borderRadius="full" colorScheme={statusMeta.color}>
-                    <TagLabel fontWeight="900" color={'black'}>{statusMeta.label}</TagLabel>
+                    <TagLabel fontWeight="900">{statusMeta.label}</TagLabel>
                   </Tag>
                 </HStack>
               </CardHeader>
@@ -347,15 +396,15 @@ export default function Order() {
               <CardBody>
                 <Stack spacing={5}>
                   <Box>
-                    <Text fontWeight="900" color="black" mb={2}>
+                    <Text fontWeight="900" color="#0F172A" mb={2}>
                       Progreso
                     </Text>
                     <Progress value={statusMeta.step} borderRadius="full" />
                     <HStack justify="space-between" mt={2}>
-                      <Text fontSize="xs" color="black">
+                      <Text fontSize="xs" color="gray.500">
                         Recibido
                       </Text>
-                      <Text fontSize="xs" color="black">
+                      <Text fontSize="xs" color="gray.500">
                         Entregado
                       </Text>
                     </HStack>
@@ -365,8 +414,8 @@ export default function Order() {
 
                   <Box>
                     <HStack spacing={2} mb={2}>
-                      <Icon as={FaBoxOpen} color="black" />
-                      <Text fontWeight="900" color="black">
+                      <Icon as={FaBoxOpen} color="#88ad40" />
+                      <Text fontWeight="900" color="#0F172A">
                         Datos del cliente
                       </Text>
                     </HStack>
@@ -375,13 +424,14 @@ export default function Order() {
                       <InfoRow label="Nombre" value={order.customer.name || "—"} />
                       <InfoRow label="Teléfono" value={order.customer.phone || "—"} />
                       <InfoRow label="Email" value={order.customer.email || "—"} />
+
                       <HStack align="flex-start" spacing={3}>
                         <Icon as={FaMapMarkerAlt} color="gray.400" mt="2px" />
                         <Box>
-                          <Text fontSize="xs" color="black">
+                          <Text fontSize="xs" color="gray.500">
                             Dirección
                           </Text>
-                          <Text fontWeight="700" color="black">
+                          <Text fontWeight="700" color="#0F172A">
                             {order.customer.address || "—"}
                           </Text>
                         </Box>
@@ -395,7 +445,7 @@ export default function Order() {
                       <Box>
                         <HStack spacing={2}>
                           <Icon as={FaClock} color="#636E52" />
-                          <Text fontWeight="900" color="#1b2b1f">
+                          <Text fontWeight="900" color="#0F172A">
                             Nota
                           </Text>
                         </HStack>
@@ -412,8 +462,8 @@ export default function Order() {
                     target="_blank"
                     rel="noreferrer"
                     leftIcon={<Icon as={FaWhatsapp} />}
-                    bg="white"
-                    color="black"
+                    bg="#25D366"
+                    color="white"
                     borderRadius="full"
                     _hover={{ filter: "brightness(0.95)" }}
                   >
@@ -423,13 +473,19 @@ export default function Order() {
               </CardBody>
             </Card>
 
-            {/* RIGHT: Items */}
-            <Card borderRadius="2xl" boxShadow="sm" border="1px solid" bg="#636E52">
+            {/* RIGHT */}
+            <Card
+              borderRadius="2xl"
+              boxShadow="sm"
+              border="1px solid"
+              borderColor="blackAlpha.200"
+              bg="#636E52"
+            >
               <CardHeader pb={0}>
-                <Heading size="md" color="gray.100">
+                <Heading size="md" color="white">
                   Productos en tu pedido
                 </Heading>
-                <Text color="gray.300" fontSize="sm" mt={1}>
+                <Text color="whiteAlpha.800" fontSize="sm" mt={1}>
                   {totals.count} artículo(s) • Subtotal estimado {moneyQ(totals.subtotal)}
                 </Text>
               </CardHeader>
@@ -441,43 +497,45 @@ export default function Order() {
                       <Box key={`${it.id}-${idx}`}>
                         <HStack justify="space-between" align="flex-start" spacing={4}>
                           <Box>
-                            <Text fontWeight="900" color="gray.100" noOfLines={2}>
+                            <Text fontWeight="900" color="white" noOfLines={2}>
                               {it.name}
                             </Text>
-                            <Text fontSize="sm" color="gray.300" mt={1}>
+                            <Text fontSize="sm" color="whiteAlpha.800" mt={1}>
                               Cantidad: <b>{it.qty}</b>
                             </Text>
                           </Box>
 
                           <Box textAlign="right">
-                            <Text fontWeight="900" color="gray.100">
+                            <Text fontWeight="900" color="white">
                               {moneyQ((it.price || 0) * (it.qty || 0))}
                             </Text>
-                            <Text fontSize="xs" color="gray.100">
+                            <Text fontSize="xs" color="whiteAlpha.800">
                               {it.price ? `${moneyQ(it.price)} c/u` : "—"}
                             </Text>
                           </Box>
                         </HStack>
 
-                        {idx !== order.items.length - 1 ? <Divider my={4} /> : null}
+                        {idx !== order.items.length - 1 ? (
+                          <Divider my={4} borderColor="whiteAlpha.300" />
+                        ) : null}
                       </Box>
                     ))
                   ) : (
-                    <Text color="gray.100">No hay productos para mostrar.</Text>
+                    <Text color="whiteAlpha.900">No hay productos para mostrar.</Text>
                   )}
 
-                  <Divider />
+                  <Divider borderColor="whiteAlpha.300" />
 
                   <HStack justify="space-between">
-                    <Text fontWeight="900" color="gray.100">
+                    <Text fontWeight="900" color="white">
                       Total estimado
                     </Text>
-                    <Text fontWeight="900" color="gray.100">
+                    <Text fontWeight="900" color="white">
                       {moneyQ(totals.subtotal)}
                     </Text>
                   </HStack>
 
-                  <Text fontSize="xs" color="gray.300">
+                  <Text fontSize="xs" color="whiteAlpha.800">
                     *El total final puede variar según disponibilidad y lote. El equipo confirma antes de entregar.
                   </Text>
                 </Stack>
@@ -504,8 +562,17 @@ export default function Order() {
               por WhatsApp si ya hiciste tu pedido.
             </Text>
             <HStack mt={5} spacing={3} flexWrap="wrap">
-              <Button as="a" href={whatsappLink} target="_blank" rel="noreferrer" leftIcon={<Icon as={FaWhatsapp} />}
-                bg="#25D366" color="white" borderRadius="full" _hover={{ filter: "brightness(0.95)" }}>
+              <Button
+                as="a"
+                href={whatsappLink}
+                target="_blank"
+                rel="noreferrer"
+                leftIcon={<Icon as={FaWhatsapp} />}
+                bg="#25D366"
+                color="white"
+                borderRadius="full"
+                _hover={{ filter: "brightness(0.95)" }}
+              >
                 Pedir mi código por WhatsApp
               </Button>
             </HStack>
@@ -519,10 +586,10 @@ export default function Order() {
 function InfoRow({ label, value }) {
   return (
     <HStack justify="space-between">
-      <Text fontSize="xs" color="black">
+      <Text fontSize="xs" color="gray.500">
         {label}
       </Text>
-      <Text fontWeight="800" color="black">
+      <Text fontWeight="800" color="#0F172A">
         {value}
       </Text>
     </HStack>

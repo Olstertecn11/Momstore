@@ -28,6 +28,7 @@ import {
 } from "@chakra-ui/react";
 import { SearchIcon } from "@chakra-ui/icons";
 import "../assets/style/products.css";
+import { useCart } from "../store/cart.context";
 
 import environment from "../config/environment";
 
@@ -58,6 +59,7 @@ export default function Products() {
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { addItem } = useCart();
 
   // =========================
   // Fetch productos
@@ -355,14 +357,14 @@ export default function Products() {
                     </Text>
                   </HStack>
 
-                  <Text fontSize="sm" color="#444">
+                  <Text fontSize="sm" color="gray.400">
                     {selectedProduct.description}
                   </Text>
 
                   <Divider />
 
                   <HStack justify="space-between">
-                    <Text fontSize="sm" color="gray.600">
+                    <Text fontSize="sm" color="gray.200">
                       Precio:
                     </Text>
                     <Text fontWeight="bold">
@@ -378,6 +380,9 @@ export default function Products() {
                     color="white"
                     _hover={{ bg: "#667e37" }}
                     w="full"
+                    onClick={() => {
+                      addItem(selectedProduct);
+                    }}
                     isDisabled={selectedProduct.stock <= 0}
                   >
                     Agregar a mi lista
