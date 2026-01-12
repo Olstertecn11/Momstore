@@ -5,6 +5,7 @@ import Contact from "./pages/Contact"; // crea este archivo
 import Layout from "./components/Layout";
 import "./assets/style/main.css";
 import { CartProvider } from "./store/cart.context";
+import Cart from "./pages/Cart";
 
 function RouterManager() {
   return (
@@ -23,6 +24,14 @@ function RouterManager() {
           element={
             <Layout navbarDarkmode>
               <Products />
+            </Layout>
+          }
+        />
+        <Route
+          path="/Carrito"
+          element={
+            <Layout navbarDarkmode>
+              <Cart />
             </Layout>
           }
         />
