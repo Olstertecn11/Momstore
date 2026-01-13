@@ -3,12 +3,14 @@ import {
   Box,
   Flex,
   HStack,
+  chakra,
   IconButton,
   Link,
   Stack,
   Text,
   useDisclosure,
   Drawer,
+  Heading,
   DrawerOverlay,
   DrawerContent,
   DrawerHeader,
@@ -95,16 +97,20 @@ export default function Navbar({ darkmode = false }) {
           justify="space-between"
         >
           {/* LOGO */}
-          <Text
-            fontSize={{ base: "md", md: "lg" }}
+          <Heading
+            as="h1"
+            fontSize={{ base: "32px", md: "38px" }}
             fontWeight="800"
-            color="white"
-            letterSpacing="0.02em"
+            lineHeight="1"
+            letterSpacing="-0.02em"
+            fontFamily="system-ui, -apple-system, Segoe UI, Roboto, Arial"
             cursor="pointer"
             onClick={() => navigate("/")}
+            userSelect="none"
           >
-            MomStore
-          </Text>
+            <chakra.span color="#c5c5c5">Nutri</chakra.span>{" "}
+            <chakra.span color="#373b32">Home</chakra.span>
+          </Heading>
 
           {/* MENÚ DESKTOP */}
           <HStack
