@@ -3,6 +3,7 @@ import {
   Box,
   Container,
   Heading,
+  Flex,
   Text,
   Stack,
   HStack,
@@ -21,6 +22,7 @@ import environment from "../../config/environment";
 import { useCart } from "../../store/cart.context";
 import ProductCard from "../../components/common/ProductCard";
 import FeatureCard from './FeatureCard'
+import WaveText from "../../components/common/WaveText";
 
 import { normalizeProduct } from './utils'
 
@@ -222,6 +224,36 @@ export default function Home({ navbar }) {
           />
         </SimpleGrid>
       </Container>
+
+      <Box h={'60vh'} w={'full'} bg={'linear-gradient(to right top, #5e694c, #717e62, #85947a, #9aab91, #afc2aa, #b2c9ac, #b4d0ae, #b7d7b0, #aacf9a, #9fc683, #95bd6b, #8db352);'} >
+
+        <Flex
+          justifyContent='center'
+          alignItems='center'
+          alignContent='center'
+          justifyItems='center'
+          h='100%'
+          w='100%'
+          flexDirection='column'
+          paddingX={'2rem'}
+        >
+          <WaveText
+            text="Cocina con propósito, come con placer,"
+            color="white"
+            fontWeight="800"
+            lineHeight="1.05"
+            fontSize={{ base: "40px", md: "70px" }}
+          />
+          <WaveText
+            text="vive con energía."
+            color="white"
+            fontWeight="800"
+            lineHeight="1.05"
+            fontSize={{ base: "40px", md: "70px" }}
+          />
+        </Flex>
+
+      </Box>
 
       <Divider />
 

@@ -23,20 +23,22 @@ import {
 } from "@chakra-ui/react";
 import { PhoneIcon, EmailIcon } from "@chakra-ui/icons";
 import { FaWhatsapp, FaMapMarkerAlt, FaClock, FaShoppingBasket } from "react-icons/fa";
+import bgImage from '../assets/images/contact_background.jpg';
+import WaveText from "../components/common/WaveText";
 
 export default function Contact() {
   const toast = useToast();
 
   // ✅ Edita estos datos a los tuyos
-  const WHATSAPP_NUMBER = "50200000000"; // solo números (ej: 50259621085)
-  const DISPLAY_PHONE = "+502 0000-0000";
-  const EMAIL = "ventas@momstore.com";
+  const WHATSAPP_NUMBER = "50246501947"; // solo números (ej: 50259621085)
+  const DISPLAY_PHONE = "+502 4650-1947";
+  const EMAIL = "ventas@nutrihome.com";
   const LOCATION = "Guatemala";
-  const HOURS = "Lun–Sáb: 8:00am–6:00pm";
+  const HOURS = "Lun–Vie: 8:00am–6:00pm";
 
   const whatsappLink = useMemo(() => {
     const text = encodeURIComponent(
-      "Hola MomStore 👋\nQuisiera hacer un pedido / consultar disponibilidad. ¿Me pueden ayudar?"
+      "Hola NutriHome 👋\nQuisiera hacer un pedido / consultar disponibilidad. ¿Me pueden ayudar?"
     );
     return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
   }, [WHATSAPP_NUMBER]);
@@ -88,7 +90,7 @@ export default function Contact() {
           opacity={0.35}
         />
         <Container position="relative" zIndex={1} maxW="6xl" p={6}>
-          <Box backgroundImage={"https://realserver.in/wp-content/uploads/2025/06/bg-contactus.jpg"} position='absolute' top={0} left={0} width='100%' height='100%' bgSize='cover' bgPosition='center' filter='brightness(0.7)' borderRadius='xl' zIndex={-1}>
+          <Box backgroundImage={bgImage} position='absolute' top={0} left={0} width='100%' height='100%' bgSize='cover' bgPosition='center' filter='brightness(0.6)' borderRadius='xl' zIndex={-1}>
           </Box>
           <Stack spacing={6}>
             <HStack spacing={3} flexWrap="wrap">
@@ -131,7 +133,7 @@ export default function Contact() {
               en minutos.
             </Heading>
 
-            <Text color="gray.250" maxW="760px" fontSize={{ base: "sm", md: "md" }}>
+            <Text color="white" maxW="760px" fontSize={{ base: "sm", md: "md" }}>
               ¿Buscas semillas, mantequilla de maní, snacks, aceites o productos tipo PriceSmart?
               Escríbenos y te confirmamos disponibilidad, total y fecha de entrega.
             </Text>

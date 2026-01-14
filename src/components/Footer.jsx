@@ -9,7 +9,7 @@ export default function Footer() {
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8}>
           <Box>
             <Heading size="sm" mb={3} color="white">
-              MomStore
+              NutriHome
             </Heading>
             <Text fontSize="sm" color="whiteAlpha.700">
               Tienda familiar con productos seleccionados para tu hogar y cocina.
@@ -42,7 +42,7 @@ export default function Footer() {
               WhatsApp: +502 4650-1947
             </Text>
             <Text fontSize="sm" color="whiteAlpha.700">
-              Email: info@momstore.com
+              Email: info@nutrihome.com
             </Text>
 
             <Button
@@ -66,7 +66,7 @@ export default function Footer() {
         <Divider my={8} borderColor="whiteAlpha.200" />
 
         <Text fontSize="xs" color="whiteAlpha.600">
-          © {new Date().getFullYear()} MomStore. Todos los derechos reservados.
+          © {new Date().getFullYear()} NutriHome. Todos los derechos reservados.
         </Text>
       </Container>
     </Box>
