@@ -30,8 +30,8 @@ export default function Contact() {
   const toast = useToast();
 
   // ✅ Edita estos datos a los tuyos
-  const WHATSAPP_NUMBER = "50246501947"; // solo números (ej: 50259621085)
-  const DISPLAY_PHONE = "+502 4650-1947";
+  const WHATSAPP_NUMBER = "50246204465"; // solo números (ej: 50259621085)
+  const DISPLAY_PHONE = "+502 4620-4465";
   const EMAIL = "ventas@nutrihome.com";
   const LOCATION = "Guatemala";
   const HOURS = "Lun–Vie: 8:00am–6:00pm";

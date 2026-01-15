@@ -118,7 +118,7 @@ export default function Order() {
 
   // WhatsApp
   const whatsappLink = useMemo(() => {
-    const WHATSAPP_NUMBER = "50200000000"; // pon el real
+    const WHATSAPP_NUMBER = "50246204465"; // pon el real
     const currentCode = order?.code || code?.trim();
     if (!currentCode) return `https://wa.me/${WHATSAPP_NUMBER}`;
 

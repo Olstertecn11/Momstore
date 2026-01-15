@@ -39,7 +39,7 @@ export default function Footer() {
               Contacto
             </Heading>
             <Text fontSize="sm" color="whiteAlpha.700">
-              WhatsApp: +502 4650-1947
+              WhatsApp: +502 4620-4465
             </Text>
             <Text fontSize="sm" color="whiteAlpha.700">
               Email: info@nutrihome.com
@@ -47,7 +47,7 @@ export default function Footer() {
 
             <Button
               as="a"
-              href="https://wa.me/50246501947"
+              href="https://wa.me/50246204465"
               target="_blank"
               rel="noreferrer"
               mt={4}
