@@ -73,7 +73,9 @@ export default function Products() {
         setErrorMsg("");
 
         const url = `${environment.config.apiUrl}/products`;
+        console.log("Fetching products from:", url);
         const res = await fetch(url, { signal: controller.signal });
+        console.log(res);
 
         if (!res.ok) {
           throw new Error(`HTTP ${res.status} al cargar productos`);

@@ -281,8 +281,8 @@ export default function Navbar({ darkmode = false }) {
         <DrawerOverlay />
         <DrawerContent bg={'#4f5c3dc9'} backdropFilter={'blur(10px)'}>
           <DrawerHeader display="flex" alignItems="center" justifyContent="space-between">
-            <Text>Tu carrito</Text>
-            <Button variant="ghost" size="sm" onClick={() => {
+            <Text color='white'>Tu carrito</Text>
+            <Button color='white' variant="ghost" size="sm" onClick={() => {
               navigate("/carrito")
               cartDrawer.onClose()
             }
@@ -293,7 +293,7 @@ export default function Navbar({ darkmode = false }) {
 
           <DrawerBody>
             {items.length === 0 ? (
-              <Text color="gray.500">Tu carrito está vacío.</Text>
+              <Text color="gray.200">Tu carrito está vacío.</Text>
             ) : (
               <VStack spacing={4} align="stretch">
                 {items.map((it) => {
@@ -306,8 +306,8 @@ export default function Navbar({ darkmode = false }) {
                     <Flex key={it.id} gap={3} align="flex-start">
                       <Image src={img} w="70px" h="70px" borderRadius="md" objectFit="cover" alt={name} />
                       <Box flex="1">
-                        <Text fontWeight="700" noOfLines={1}>{name}</Text>
-                        <Text fontSize="sm" color="gray.600">Q.{price.toFixed(2)}</Text>
+                        <Text fontWeight="700" noOfLines={1} color='white'>{name}</Text>
+                        <Text fontSize="sm" color="white">Q.{price.toFixed(2)}</Text>
 
                         <HStack mt={2}>
                           <Button
@@ -317,7 +317,7 @@ export default function Navbar({ darkmode = false }) {
                           >
                             -
                           </Button>
-                          <Box px={2} fontWeight="700">{it.qty}</Box>
+                          <Box px={2} fontWeight="700" color='white'>{it.qty}</Box>
                           <Button size="sm" onClick={() => setQty(it.id, it.qty + 1)}>
                             +
                           </Button>
@@ -327,6 +327,7 @@ export default function Navbar({ darkmode = false }) {
                       <IconButton
                         aria-label="Eliminar"
                         icon={<FiTrash2 />}
+                        color='white'
                         variant="ghost"
                         onClick={() => removeItem(it.id)}
                       />
@@ -336,12 +337,12 @@ export default function Navbar({ darkmode = false }) {
 
                 <Box borderTop="1px solid" borderColor="gray.200" pt={4}>
                   <HStack justify="space-between">
-                    <Text fontWeight="700">Subtotal</Text>
-                    <Text fontWeight="800">Q.{(totals?.subtotal || 0).toFixed(2)}</Text>
+                    <Text fontWeight="700" color='white'>Subtotal</Text>
+                    <Text fontWeight="800" color='white'>Q.{(totals?.subtotal || 0).toFixed(2)}</Text>
                   </HStack>
 
                   <HStack mt={3} spacing={3}>
-                    <Button variant="outline" w="full" onClick={clear}>
+                    <Button variant="outline" w="full" onClick={clear} color='white'>
                       Vaciar
                     </Button>
                     <Button
