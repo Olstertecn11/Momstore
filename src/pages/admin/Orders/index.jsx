@@ -1,33 +1,19 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  Box,
-  Button,
-  Container,
-  Heading,
-  HStack,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Select,
-  Stack,
-  Tag,
-  TagLabel,
-  Text,
-  useToast,
-  SimpleGrid,
-  Card,
-  CardBody,
-  Divider,
-  Badge,
-  Skeleton,
+  Box, Button, Container, Heading, HStack, Input, InputGroup, InputLeftElement,
+  Select, Stack, Tag, TagLabel, Text, useToast, SimpleGrid, Card, CardBody,
+  Divider, Badge, Skeleton, IconButton, Modal, ModalOverlay, ModalContent,
+  ModalHeader, ModalBody, ModalCloseButton, useDisclosure, Table, Tbody,
+  Tr, Td, Th, Thead, Image, Icon, Flex, VStack
 } from "@chakra-ui/react";
 import { SearchIcon, RepeatIcon } from "@chakra-ui/icons";
+import { FiEye, FiPackage, FiTruck, FiUser, FiMapPin, FiPhone, FiMail } from "react-icons/fi";
 import { api } from "../../../api/axios";
 
-const FLOW = ["RECEIVED", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED"];
+// Coincide exactamente con tu ENUM de base de datos
+const FLOW = ["PENDING", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED"];
 
 function nextStatus(current) {
-  if (!current) return "RECEIVED";
   if (current === "CANCELLED" || current === "DELIVERED") return null;
   const i = FLOW.indexOf(current);
   if (i === -1) return null;
@@ -35,33 +21,31 @@ function nextStatus(current) {
 }
 
 function statusColorScheme(status) {
-  switch (status) {
-    case "RECEIVED": return "gray";
-    case "CONFIRMED": return "blue";
-    case "PREPARING": return "purple";
-    case "OUT_FOR_DELIVERY": return "orange";
-    case "DELIVERED": return "green";
-    case "CANCELLED": return "red";
-    default: return "gray";
-  }
-}
-
-function formatDate(value) {
-  if (!value) return "-";
-  // Si viene como "YYYY-MM-DD ..." lo mostramos simple
-  return String(value).slice(0, 16).replace("T", " ");
+  const colors = {
+    PENDING: "gray",
+    CONFIRMED: "blue",
+    PREPARING: "purple",
+    READY: "cyan",
+    OUT_FOR_DELIVERY: "orange",
+    DELIVERED: "green",
+    CANCELLED: "red"
+  };
+  return colors[status] || "gray";
 }
 
 export default function Orders() {
   const toast = useToast();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [loading, setLoading] = React.useState(true);
-  const [rows, setRows] = React.useState([]);
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [updatingId, setUpdatingId] = useState(null);
 
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("ALL");
-
-  const [updatingId, setUpdatingId] = React.useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderItems, setOrderItems] = useState([]);
+  const [loadingItems, setLoadingItems] = useState(false);
 
   async function loadOrders() {
     setLoading(true);
@@ -69,208 +53,107 @@ export default function Orders() {
       const res = await api.get("/admin/orders");
       setRows(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      toast({
-        title: "No se pudieron cargar las órdenes",
-        description: err?.response?.data?.message || "Error de servidor",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      toast({ title: "Error al cargar órdenes", status: "error" });
     } finally {
       setLoading(false);
     }
   }
 
-  React.useEffect(() => {
-    loadOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { loadOrders(); }, []);
 
-  const filtered = React.useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows
-      .filter((o) => {
-        if (statusFilter !== "ALL" && o.status !== statusFilter) return false;
-        if (!q) return true;
-        // busca por code o id
-        const code = String(o.code || "").toLowerCase();
-        const id = String(o.id_order || "");
-        return code.includes(q) || id.includes(q);
-      });
+  const filtered = useMemo(() => {
+    return rows.filter((o) => {
+      const matchesStatus = statusFilter === "ALL" || o.status === statusFilter;
+      const q = search.toLowerCase();
+      const matchesSearch = !q || o.code.toLowerCase().includes(q) || String(o.id_order).includes(q);
+      return matchesStatus && matchesSearch;
+    });
   }, [rows, search, statusFilter]);
+
+  async function handleOpenDetail(order) {
+    setSelectedOrder(order);
+    onOpen();
+    setLoadingItems(true);
+    try {
+      const res = await api.get(`/admin/orders/${order.id_order}/items`);
+      setOrderItems(res.data);
+    } catch (err) {
+      toast({ title: "Error al cargar productos", status: "error" });
+    } finally {
+      setLoadingItems(false);
+    }
+  }
 
   async function updateStatus(id_order, newStatus) {
     setUpdatingId(id_order);
     try {
       await api.patch(`/admin/orders/${id_order}/status`, { status: newStatus });
-      setRows((prev) =>
-        prev.map((o) => (o.id_order === id_order ? { ...o, status: newStatus, updated_at: new Date().toISOString() } : o))
-      );
-      toast({
-        title: "Estado actualizado",
-        description: `Orden #${id_order} → ${newStatus}`,
-        status: "success",
-        duration: 2000,
-        isClosable: true,
-      });
+      setRows(prev => prev.map(o => o.id_order === id_order ? { ...o, status: newStatus } : o));
+      if (selectedOrder?.id_order === id_order) setSelectedOrder({ ...selectedOrder, status: newStatus });
+      toast({ title: "Estado actualizado", status: "success", duration: 1500 });
     } catch (err) {
-      toast({
-        title: "No se pudo actualizar",
-        description: err?.response?.data?.message || "Error de servidor",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      toast({ title: "Error al actualizar", status: "error" });
     } finally {
       setUpdatingId(null);
     }
   }
 
   return (
-    <Container maxW="6xl" py="8">
+    <Container maxW="6xl" py="8" mt={'8vh'}>
       <Stack spacing="5">
-        <HStack justify="space-between" align="start" flexWrap="wrap" gap="3">
+        <HStack justify="space-between">
           <Box>
-            <Heading size="lg">Órdenes</Heading>
-            <Text opacity={0.75} fontSize="sm">
-              Gestión de pedidos (cambio de estado y seguimiento)
-            </Text>
+            <Heading size="lg">Gestión de Pedidos</Heading>
+            <Text color="gray.500">Administra el flujo de despacho</Text>
           </Box>
-
-          <HStack gap="2">
-            <Button
-              leftIcon={<RepeatIcon />}
-              onClick={loadOrders}
-              isLoading={loading}
-              variant="outline"
-            >
-              Refrescar
-            </Button>
-          </HStack>
+          <Button leftIcon={<RepeatIcon />} onClick={loadOrders} isLoading={loading}>Refrescar</Button>
         </HStack>
 
-        <Card borderRadius="2xl">
-          <CardBody>
-            <HStack gap="3" flexWrap="wrap">
-              <InputGroup maxW={{ base: "100%", md: "360px" }}>
-                <InputLeftElement pointerEvents="none">
-                  <SearchIcon opacity={0.6} />
-                </InputLeftElement>
-                <Input
-                  placeholder="Buscar por código o ID..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </InputGroup>
+        {/* FILTROS */}
+        <HStack gap="3">
+          <InputGroup>
+            <InputLeftElement><SearchIcon color="gray.400" /></InputLeftElement>
+            <Input placeholder="Código o ID de orden..." value={search} onChange={e => setSearch(e.target.value)} bg="white" />
+          </InputGroup>
+          <Select maxW="250px" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} bg="white">
+            <option value="ALL">Todos los estados</option>
+            {FLOW.concat("CANCELLED").map(s => <option key={s} value={s}>{s}</option>)}
+          </Select>
+        </HStack>
 
-              <Select
-                maxW={{ base: "100%", md: "260px" }}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="ALL">Todos los estados</option>
-                <option value="RECEIVED">RECEIVED</option>
-                <option value="CONFIRMED">CONFIRMED</option>
-                <option value="PREPARING">PREPARING</option>
-                <option value="OUT_FOR_DELIVERY">OUT_FOR_DELIVERY</option>
-                <option value="DELIVERED">DELIVERED</option>
-                <option value="CANCELLED">CANCELLED</option>
-              </Select>
-
-              <Tag borderRadius="full" variant="subtle">
-                <TagLabel>{filtered.length} resultado(s)</TagLabel>
-              </Tag>
-            </HStack>
-          </CardBody>
-        </Card>
-
-        <Divider />
-
-        {loading ? (
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4">
-            <Skeleton height="140px" borderRadius="2xl" />
-            <Skeleton height="140px" borderRadius="2xl" />
-            <Skeleton height="140px" borderRadius="2xl" />
-            <Skeleton height="140px" borderRadius="2xl" />
-          </SimpleGrid>
-        ) : filtered.length === 0 ? (
-          <Box p="10" textAlign="center" borderWidth="1px" borderRadius="2xl">
-            <Heading size="md">Sin resultados</Heading>
-            <Text opacity={0.7} mt="2">
-              Ajusta filtros o busca por código/ID.
-            </Text>
-          </Box>
-        ) : (
+        {/* LISTADO */}
+        {loading ? <Skeleton height="200px" borderRadius="2xl" /> : (
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4">
             {filtered.map((o) => {
               const next = nextStatus(o.status);
-              const canCancel = o.status !== "CANCELLED" && o.status !== "DELIVERED";
-
               return (
-                <Card key={o.id_order} borderRadius="2xl">
+                <Card key={o.id_order} borderRadius="xl" shadow="sm">
                   <CardBody>
-                    <Stack spacing="3">
-                      <HStack justify="space-between" align="start">
-                        <Box>
-                          <HStack spacing="2" align="center" flexWrap="wrap">
-                            <Heading size="md">Orden #{o.id_order}</Heading>
-                            {o.code ? (
-                              <Badge variant="subtle" borderRadius="md">
-                                {o.code}
-                              </Badge>
-                            ) : null}
-                          </HStack>
-                          <Text fontSize="sm" opacity={0.75}>
-                            Creada: {formatDate(o.created_at || o.entry_date)}
-                          </Text>
-                          <Text fontSize="sm" opacity={0.75}>
-                            Actualizada: {formatDate(o.updated_at)}
-                          </Text>
-                        </Box>
+                    <Flex justify="space-between" mb={3}>
+                      <VStack align="start" spacing={0}>
+                        <Heading size="sm">Orden: {o.code}</Heading>
+                        <Text fontSize="xs" color="gray.500">ID DB: #{o.id_order}</Text>
+                      </VStack>
+                      <Tag colorScheme={statusColorScheme(o.status)}>{o.status}</Tag>
+                    </Flex>
 
-                        <Tag colorScheme={statusColorScheme(o.status)} borderRadius="full">
-                          <TagLabel>{o.status}</TagLabel>
-                        </Tag>
-                      </HStack>
+                    <Text fontSize="sm" mb={4}>
+                      <b>Cliente:</b> {o.customer_name || o.registered_username || "Usuario"}
+                    </Text>
 
-                      <Divider />
-
-                      <HStack justify="space-between" flexWrap="wrap" gap="2">
-                        <Box>
-                          <Text fontSize="sm" opacity={0.8}>
-                            Entrega esperada:{" "}
-                            <b>{o.expected_delivery_date ? String(o.expected_delivery_date) : "-"}</b>
-                          </Text>
-                        </Box>
-
-                        <HStack>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            isDisabled={!next || updatingId === o.id_order}
-                            isLoading={updatingId === o.id_order && !!next}
-                            onClick={() => next && updateStatus(o.id_order, next)}
-                          >
-                            Avanzar {next ? `→ ${next}` : ""}
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            colorScheme="red"
-                            variant="solid"
-                            isDisabled={!canCancel || updatingId === o.id_order}
-                            isLoading={updatingId === o.id_order && canCancel}
-                            onClick={() => canCancel && updateStatus(o.id_order, "CANCELLED")}
-                          >
-                            Cancelar
-                          </Button>
-                        </HStack>
-                      </HStack>
-
-                      <Text fontSize="xs" opacity={0.6}>
-                        Nota: “Avanzar” solo permite el siguiente estado del flujo. “Cancelar” está permitido en cualquier punto.
-                      </Text>
-                    </Stack>
+                    <HStack justify="space-between">
+                      <Button leftIcon={<FiEye />} size="sm" onClick={() => handleOpenDetail(o)}>Ver Detalle</Button>
+                      {next && (
+                        <Button
+                          size="sm"
+                          colorScheme="green"
+                          isLoading={updatingId === o.id_order}
+                          onClick={() => updateStatus(o.id_order, next)}
+                        >
+                          Mover a {next}
+                        </Button>
+                      )}
+                    </HStack>
                   </CardBody>
                 </Card>
               );
@@ -278,6 +161,59 @@ export default function Orders() {
           </SimpleGrid>
         )}
       </Stack>
+
+      {/* MODAL DETALLE */}
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent borderRadius="2xl">
+          <ModalHeader borderBottomWidth="1px">Detalles del Pedido {selectedOrder?.code}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={8}>
+            <Stack spacing={6}>
+              {/* DATOS DE CONTACTO */}
+              <Box bg="blue.50" p={4} borderRadius="lg">
+                <Heading size="xs" mb={3} color="blue.700">DATOS DE ENVÍO</Heading>
+                <VStack align="start" spacing={2} fontSize="sm">
+                  <HStack><Icon as={FiUser} /><Text><b>Nombre:</b> {selectedOrder?.customer_name || selectedOrder?.registered_username}</Text></HStack>
+                  <HStack><Icon as={FiPhone} /><Text><b>Tel:</b> {selectedOrder?.customer_phone || "N/A"}</Text></HStack>
+                  <HStack><Icon as={FiMail} /><Text><b>Email:</b> {selectedOrder?.customer_email || "N/A"}</Text></HStack>
+                  <HStack align="start"><Icon as={FiMapPin} mt={1} /><Text><b>Dirección:</b> {selectedOrder?.customer_address || "Sin dirección"}</Text></HStack>
+                </VStack>
+              </Box>
+
+              {/* TABLA PRODUCTOS */}
+              <Box>
+                <Heading size="xs" mb={3} display="flex" alignItems="center"><Icon as={FiPackage} mr={2} />ITEMS DEL PEDIDO</Heading>
+                <Table size="sm" variant="simple">
+                  <Thead>
+                    <Tr>
+                      <Th>Producto</Th>
+                      <Th isNumeric>Cant.</Th>
+                      <Th isNumeric>P. Unitario</Th>
+                      <Th isNumeric>Subtotal</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {orderItems.map(item => (
+                      <Tr key={item.id_order_detail}>
+                        <Td>
+                          <HStack>
+                            <Image src={item.image_url} boxSize="35px" borderRadius="md" fallbackSrc="https://via.placeholder.com/35" />
+                            <Text fontWeight="600">{item.product_name}</Text>
+                          </HStack>
+                        </Td>
+                        <Td isNumeric>{item.quantity}</Td>
+                        <Td isNumeric>Q.{Number(item.unit_price).toFixed(2)}</Td>
+                        <Td isNumeric>Q.{Number(item.line_amount).toFixed(2)}</Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </Box>
+            </Stack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Container>
   );
 }

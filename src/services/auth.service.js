@@ -2,7 +2,6 @@ import { api } from "../api/axios";
 
 export async function login(email, password) {
   const res = await api.post("/auth/login", { email, password });
-  // { user, accessToken } y cookie refresh por Set-Cookie
   return res.data;
 }
 

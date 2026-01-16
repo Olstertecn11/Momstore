@@ -52,9 +52,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function doLogin(email, password) {
-    console.log('doLogin called with:', email, password);
     const data = await authApi.login(email, password);
-    console.log("doLogin:", data);
     setAccessToken(data.accessToken);
     setUser(data.user);
     localStorage.setItem("momstore_has_session", "1");

@@ -25,7 +25,7 @@ export default function RouterManager() {
         {/* ADMIN PROTEGIDO */}
         {routes?.adminRoutes.map((route, index) => {
           const Page = route.component;
-          const roles = route.roles || ["ADMIN", "WORKER"];
+          const roles = route.roles || ["Administrador", "Cliente"];
 
           const element = (
             <ProtectedRoute roles={roles}>

@@ -150,6 +150,7 @@ export default function Order() {
       orderCode
     )}`;
     const { data } = await axios.get(url);
+    console.log("API response:", data);
     return data;
   }, []);
 

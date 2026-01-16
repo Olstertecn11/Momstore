@@ -23,6 +23,7 @@ import { HamburgerIcon, CloseIcon } from "@chakra-ui/icons";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { FiShoppingCart, FiTrash2 } from "react-icons/fi";
 import { useCart } from "../store/cart.context";
+import { useAuth } from "../auth/AuthContext";
 
 const navLinks = [
   { label: "Inicio", to: "/" },
@@ -36,8 +37,9 @@ export default function Navbar({ darkmode = false }) {
   const cartDrawer = useDisclosure(); // 👈 drawer del carrito
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
-
   const { items, totals, removeItem, setQty, clear } = useCart();
+
+  const { logout, isAuthed } = useAuth();
 
   useEffect(() => {
     const threshold = 18;
@@ -47,6 +49,15 @@ export default function Navbar({ darkmode = false }) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+
+  const closeSession = () => {
+    logout();
+    navigate("/");
+  }
+
+
+
 
   const goTo = (item) => {
     if (item.hash) {
@@ -66,6 +77,11 @@ export default function Navbar({ darkmode = false }) {
   };
 
   const navBg = scrolled || darkmode ? "#636E52" : "rgba(255,255,255,0.18)";
+
+  const accessButton = isAuthed ? (
+    <Button onClick={closeSession} float='right'>Cerrar Sesión</Button>
+  ) :
+    <Button onClick={() => navigate("/inicio-sesion")}>Iniciar Sesión</Button>;
 
   return (
     <>
@@ -200,84 +216,91 @@ export default function Navbar({ darkmode = false }) {
               _active={{ bg: "whiteAlpha.300" }}
             />
           </HStack>
-        </Flex>
+          <HStack w='auto'>
+            {accessButton}
+          </HStack>
+        </Flex >
 
         {/* MENÚ MÓVIL */}
-        {isOpen && (
-          <Box
-            bg="#636E52"
-            borderTop="1px solid rgba(255,255,255,0.12)"
-            boxShadow="md"
-            display={{ base: "block", md: "none" }}
-          >
-            <Stack as="ul" listStyleType="none" spacing={1} py={3} px={4}>
-              {navLinks.map((item) => (
-                <Box as="li" key={item.label}>
-                  {item.to ? (
-                    <Link
-                      as={RouterLink}
-                      to={item.to}
-                      display="block"
-                      py={2}
-                      fontSize="sm"
-                      fontWeight="600"
-                      color="white"
-                      _hover={{ bg: "whiteAlpha.200", textDecoration: "none" }}
-                      borderRadius="md"
-                      px={3}
-                      onClick={onClose}
-                    >
-                      {item.label}
-                    </Link>
-                  ) : (
-                    <Link
-                      display="block"
-                      py={2}
-                      fontSize="sm"
-                      fontWeight="600"
-                      color="white"
-                      _hover={{ bg: "whiteAlpha.200", textDecoration: "none" }}
-                      borderRadius="md"
-                      px={3}
-                      cursor="pointer"
-                      onClick={() => {
-                        onClose();
-                        goTo(item);
-                      }}
-                    >
-                      {item.label}
-                    </Link>
-                  )}
-                </Box>
-              ))}
+        {
+          isOpen && (
+            <Box
+              bg="#636E52"
+              borderTop="1px solid rgba(255,255,255,0.12)"
+              boxShadow="md"
+              display={{ base: "block", md: "none" }}
+            >
+              <Stack as="ul" listStyleType="none" spacing={1} py={3} px={4}>
+                {navLinks.map((item) => (
+                  <Box as="li" key={item.label}>
+                    {item.to ? (
+                      <Link
+                        as={RouterLink}
+                        to={item.to}
+                        display="block"
+                        py={2}
+                        fontSize="sm"
+                        fontWeight="600"
+                        color="white"
+                        _hover={{ bg: "whiteAlpha.200", textDecoration: "none" }}
+                        borderRadius="md"
+                        px={3}
+                        onClick={onClose}
+                      >
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <Link
+                        display="block"
+                        py={2}
+                        fontSize="sm"
+                        fontWeight="600"
+                        color="white"
+                        _hover={{ bg: "whiteAlpha.200", textDecoration: "none" }}
+                        borderRadius="md"
+                        px={3}
+                        cursor="pointer"
+                        onClick={() => {
+                          onClose();
+                          goTo(item);
+                        }}
+                      >
+                        {item.label}
+                      </Link>
+                    )}
+                  </Box>
+                ))}
 
-              {/* ACCESO A CARRITO EN MÓVIL */}
-              <Box as="li">
-                <Link
-                  display="block"
-                  py={2}
-                  fontSize="sm"
-                  fontWeight="700"
-                  color="white"
-                  _hover={{ bg: "whiteAlpha.200", textDecoration: "none" }}
-                  borderRadius="md"
-                  px={3}
-                  cursor="pointer"
-                  onClick={() => {
-                    onClose();
-                    navigate("/carrito");
-                  }}
-                >
-                  Ver carrito ({totals?.itemsCount || 0})
-                </Link>
-              </Box>
-            </Stack>
-          </Box>
-        )}
-      </Box>
+                {/* ACCESO A CARRITO EN MÓVIL */}
+                <Box as="li">
+                  <Link
+                    display="block"
+                    py={2}
+                    fontSize="sm"
+                    fontWeight="700"
+                    color="white"
+                    _hover={{ bg: "whiteAlpha.200", textDecoration: "none" }}
+                    borderRadius="md"
+                    px={3}
+                    cursor="pointer"
+                    onClick={() => {
+                      onClose();
+                      navigate("/carrito");
+                    }}
+                  >
+                    Ver carrito ({totals?.itemsCount || 0})
+                  </Link>
+                </Box>
+                {isAuthed && isAuthed ? <Button onClick={closeSession}>Cerrar Sesión</Button> :
+                  <Button onClick={() => navigate("/inicio-sesion")}>Iniciar Sesión</Button>}
+              </Stack>
+            </Box>
+          )
+        }
+      </Box >
 
       {/* DRAWER MINI-CART */}
-      <Drawer isOpen={cartDrawer.isOpen} placement="right" onClose={cartDrawer.onClose} size="sm">
+      < Drawer isOpen={cartDrawer.isOpen} placement="right" onClose={cartDrawer.onClose} size="sm" >
         <DrawerOverlay />
         <DrawerContent bg={'#4f5c3dc9'} backdropFilter={'blur(10px)'}>
           <DrawerHeader display="flex" alignItems="center" justifyContent="space-between">
@@ -360,7 +383,7 @@ export default function Navbar({ darkmode = false }) {
             )}
           </DrawerBody>
         </DrawerContent>
-      </Drawer>
+      </Drawer >
     </>
   );
 }

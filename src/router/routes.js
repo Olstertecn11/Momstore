@@ -20,8 +20,8 @@ const routes = {
   ],
 
   adminRoutes: [
-    { path: "/admin/dashboard", component: AdminDashboard, roles: ["Administrador", "Cliente"], layout: { use: true, props: { navbarInsideChild: false, navbarDarkmode: true } } },
-    { path: "/admin/ordenes", component: AdminOrders, roles: ["Administrador", "Cliente"], layout: { use: true, props: { navbarInsideChild: false, navbarDarkmode: true } } },
+    { path: "/admin/dashboard", component: AdminDashboard, roles: ["Administrador", "Cliente"], layout: { use: true, props: { navbarInsideChild: false, navbarDarkmode: true, admin: true } } },
+    { path: "/admin/ordenes", component: AdminOrders, roles: ["Administrador", "Cliente"], layout: { use: true, props: { navbarInsideChild: false, navbarDarkmode: true, admin: true } } },
   ],
 };
 
