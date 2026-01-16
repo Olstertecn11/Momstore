@@ -40,7 +40,7 @@ export default function AdminNav() {
 
   const handleLogout = () => {
     logout();
-    navigate("/inicio-sesion");
+    navigate("/");
   };
 
   return (

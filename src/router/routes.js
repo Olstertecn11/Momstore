@@ -3,10 +3,11 @@ import Products from "../pages/Products";
 import Contact from "../pages/Contact";
 import Order from "../pages/Order";
 import Cart from "../pages/Cart";
-
+import AdminOrders from "../pages/admin/Orders";
 import Login from "../pages/admin/Login";
 import AdminDashboard from "../pages/admin/Dashboard";
-import AdminOrders from "../pages/admin/Orders";
+import ProductMaintenance from "../pages/admin/Products";
+
 
 const routes = {
   publicRoutes: [
@@ -22,6 +23,7 @@ const routes = {
   adminRoutes: [
     { path: "/admin/dashboard", component: AdminDashboard, roles: ["Administrador", "Cliente"], layout: { use: true, props: { navbarInsideChild: false, navbarDarkmode: true, admin: true } } },
     { path: "/admin/ordenes", component: AdminOrders, roles: ["Administrador", "Cliente"], layout: { use: true, props: { navbarInsideChild: false, navbarDarkmode: true, admin: true } } },
+    { path: "/admin/productos", component: ProductMaintenance, roles: ["Administrador", "Cliente"], layout: { use: true, props: { navbarInsideChild: false, navbarDarkmode: true, admin: true } } },
   ],
 };
 
