@@ -29,8 +29,8 @@ import {
 import { SearchIcon } from "@chakra-ui/icons";
 import "../assets/style/products.css";
 import { useCart } from "../store/cart.context";
-
 import environment from "../config/environment";
+import { api } from "../api/axios";
 
 const normalizeProduct = (p) => {
   const priceNumber =
@@ -55,8 +55,9 @@ export default function Products() {
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all"); // "all" o id numérico en string
-  const [sort, setSort] = useState("recomendados");
+  const [fetchedCategories, setFetchedCategories] = useState([]);
 
+  const [sort, setSort] = useState("recomendados");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { addItem } = useCart();
@@ -73,20 +74,28 @@ export default function Products() {
         setErrorMsg("");
 
         const url = `${environment.config.apiUrl}/products`;
-        console.log("Fetching products from:", url);
-        const res = await fetch(url, { signal: controller.signal });
-        console.log(res);
 
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status} al cargar productos`);
-        }
+        // Ejecutamos ambas peticiones
+        const [res, catRes] = await Promise.all([
+          fetch(url, { signal: controller.signal }),
+          api.get("/categories")
+        ]);
+
+        if (!res.ok) throw new Error(`Error al cargar productos`);
+
+        // 2. Corrección en la validación de axios (catRes)
+        if (catRes.status !== 200) throw new Error(`Error al cargar categorías`);
 
         const data = await res.json();
         const normalized = Array.isArray(data) ? data.map(normalizeProduct) : [];
+
         setProducts(normalized);
+        // Guardamos las categorías que vienen de la DB
+        setFetchedCategories(catRes.data);
+
       } catch (err) {
         if (err.name !== "AbortError") {
-          setErrorMsg(err.message || "Error cargando productos");
+          setErrorMsg(err.message || "Error cargando datos");
         }
       } finally {
         setLoading(false);
@@ -97,19 +106,17 @@ export default function Products() {
     return () => controller.abort();
   }, []);
 
-  // =========================
-  // Categorías desde productos
-  // (Si prefieres, luego lo cambiamos a /categories para mostrar nombres reales)
-  // =========================
-  const categories = useMemo(() => {
-    // "Categoria 1", "Categoria 2"... basado en categoryId
-    const ids = Array.from(new Set(products.map((p) => p.categoryId))).sort((a, b) => a - b);
+  const categoriesOptions = useMemo(() => {
+    const base = [{ value: "all", label: "Todas las categorías" }];
 
-    return [
-      { value: "all", label: "Todas las categorías" },
-      ...ids.map((id) => ({ value: String(id), label: `Categoría ${id}` })),
-    ];
-  }, [products]);
+    // 3. Mapeamos los datos de la DB al formato del Select
+    const dbCategories = fetchedCategories.map((cat) => ({
+      value: String(cat.id_category), // Aseguramos que sea string para el Select
+      label: cat.category,
+    }));
+
+    return [...base, ...dbCategories];
+  }, [fetchedCategories]);
 
   // =========================
   // Filtrado + Orden
@@ -127,7 +134,7 @@ export default function Products() {
       );
     }
 
-    // categoría
+    // categoría (Filtro por el ID que viene de la DB)
     if (category !== "all") {
       const catId = Number(category);
       result = result.filter((p) => p.categoryId === catId);
@@ -206,7 +213,7 @@ export default function Products() {
             bg="white"
             fontSize="sm"
           >
-            {categories.map((cat) => (
+            {categoriesOptions.map((cat) => (
               <option key={cat.value} value={cat.value}>
                 {cat.label}
               </option>
